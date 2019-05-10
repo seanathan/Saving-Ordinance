@@ -76,7 +76,7 @@ public class SpaceShip : MonoBehaviour {
 	[Header("Ship Components")]
 	
 	
-	private EnemyWeaponsModule[] _weapons;
+	private WeaponModule[] _weapons;
 	public GameObject weaponsKit;
 	
 	private GameObject _navGyro; //turn this to move the ship
@@ -105,8 +105,7 @@ public class SpaceShip : MonoBehaviour {
 	public bool wasHit;     //flag that shows ship was recently hit
 
 	public Animator battleAnim;         //host of animator
-	
-	public SetOfGameObjects ReEntryBurn;
+	public List<GameObject> ReEntryBurn;
 	public GameObject ventralCruiseFlare;
 	
 	public GameObject navDestination;
