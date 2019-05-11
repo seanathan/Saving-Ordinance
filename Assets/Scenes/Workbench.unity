@@ -1277,8 +1277,9 @@ MonoBehaviour:
   evasivePower: 1
   turningPower: 1
   hoverThrust: 100
-  maxSafeVelocity: 200
+  maxSafeVelocity: 10
   throttle: 0
+  velocityReport: 0
   CollisionDamage: 10
   bankGimbalForce: -1
   pitchForce: -1
@@ -1298,6 +1299,7 @@ MonoBehaviour:
   navDestination: {fileID: 0}
   navFloatingWaypoint: {fileID: 0}
   DockingPort: {fileID: 0}
+  all_modules: []
 --- !u!1 &1699914745
 GameObject:
   m_ObjectHideFlags: 0

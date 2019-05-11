@@ -65,6 +65,8 @@ public class SpaceShip : MonoBehaviour {
 	[Range(-.5f, 1f)]
 	public float throttle = 0f;
 
+	public float velocityReport = 0f;
+
 	public float CollisionDamage = 10;
 
 	// Gimbal and Navigation
@@ -135,8 +137,13 @@ public class SpaceShip : MonoBehaviour {
 		//		8.	Cruise to Destination
 		if (condition == ShipCondition.active)
 		{
-			if (Rb.velocity.magnitude < maxSafeVelocity)
+
+			// DRAG CONTROL
+			float velocityIntent = throttle * maxSafeVelocity;
+			if (Rb.velocity.magnitude < velocityIntent)
 				Rb.AddRelativeForce(Vector3.forward * (EnginePower * throttle * mass));	
+			
+			velocityReport = Rb.velocity.magnitude;
 		}
 	}
 	
