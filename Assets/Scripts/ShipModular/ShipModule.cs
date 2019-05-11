@@ -121,6 +121,9 @@ public class ShipModule : MonoBehaviour {
 		}
 	}
 
+	/**
+		Checks or sets ownership
+	 */
 	public SpaceShip Ship
 	{
 		get {
@@ -147,6 +150,7 @@ public class ShipModule : MonoBehaviour {
 						_ship = value;
 						Log(name + " now belongs to " + value.name);
 						Activate();
+						ModuleUpdate();
 						return;
 
 					}
@@ -282,4 +286,9 @@ public class ShipModule : MonoBehaviour {
 			this.Deactivate();
 		
 	}
+
+	// public void initialize(SpaceShip owner = null){
+	// 	if (this._ship != null)
+	// 		return;
+	// }
 }

@@ -112,6 +112,7 @@ public class SpaceShip : MonoBehaviour {
 	public GameObject navFloatingWaypoint;
 
 	public GameObject DockingPort;
+	public List<ShipModule> all_modules = new List<ShipModule>();
 
 	private void Update()
 	{
@@ -132,7 +133,11 @@ public class SpaceShip : MonoBehaviour {
 		//		7.	Is there a Nav Destination?
 		//			a. if no, anchor ship
 		//		8.	Cruise to Destination
-
+		if (condition == ShipCondition.active)
+		{
+			if (Rb.velocity.magnitude < maxSafeVelocity)
+				Rb.AddRelativeForce(Vector3.forward * (EnginePower * throttle * mass));	
+		}
 	}
 	
 
@@ -186,7 +191,7 @@ public class SpaceShip : MonoBehaviour {
 
 		if (EnginePower > 0){
 		
-			Log("Engines ONLINE: " + EnginePower + "%");
+			Log("Engines ONLINE: " + (EnginePower *100 )+ "%");
 
 			condition = ShipCondition.active;
 		}
@@ -219,10 +224,11 @@ public class SpaceShip : MonoBehaviour {
 				if (mod.Ship == null)
 				{
 					mod.Ship = this;
+					this.all_modules.Add(mod);
 					Log(mod.moduleMessage);
 				}
-				if (mod.Ship == this && !mod.Online)
-					power += 1 / mods.Length;
+				if (mod.Ship == this && mod.Online)
+					power += (1.0f / mods.Length);
 			}
 			return power;
 		}
@@ -239,6 +245,7 @@ public class SpaceShip : MonoBehaviour {
 				{
 					mod.Ship = this;
 					Log(mod.moduleMessage);
+					this.all_modules.Add(mod);
 				}
 				if (mod.Ship == this && mod.Online)
 					_shipHP = mod.HP;
@@ -260,6 +267,7 @@ public class SpaceShip : MonoBehaviour {
 				{
 					mod.Ship = this;
 					Log(mod.moduleMessage);
+					this.all_modules.Add(mod);
 				}
 				if (mod.Ship == this && mod.Online)
 					_maxHP = mod.maxHP;
