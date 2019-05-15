@@ -1,10 +1,67 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEditor;
+
+
+[System.Serializable]
+public class ShipModStatus
+{
+    public ShipModule mod;
+	public string message;
+
+	public ShipModStatus(ShipModule mod){
+		this.mod = mod;
+		this.message = mod?.moduleMessage ?? "missing";
+	}
+	public void updateStatus(){
+		this.message = mod?.moduleMessage ?? "missing";
+	}
+}
+
+[CustomPropertyDrawer(typeof(ShipModStatus))]
+public class IngredientDrawerUIE : PropertyDrawer
+{ 
+	// Draw the property inside the given rect
+    public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
+    {
+        // Using BeginProperty / EndProperty on the parent property means that
+        // prefab override logic works on the entire property.
+        EditorGUI.BeginProperty(position, label, property);
+
+        // Draw label
+        position = EditorGUI.PrefixLabel(position, GUIUtility.GetControlID(FocusType.Passive), label);
+
+        // Don't make child fields be indented
+        var indent = EditorGUI.indentLevel;
+        EditorGUI.indentLevel = 0;
+
+        // Calculate rects
+        var amountRect = new Rect(position.x, position.y, 30, position.height);
+        var unitRect = new Rect(position.x + 35, position.y, 50, position.height);
+        // var nameRect = new Rect(position.x + 90, position.y, position.width - 90, position.height);
+
+        // Draw fields - passs GUIContent.none to each so they are drawn without labels
+        EditorGUI.PropertyField(amountRect, property.FindPropertyRelative("mod"), GUIContent.none);
+        EditorGUI.PropertyField(unitRect, property.FindPropertyRelative("message"), GUIContent.none);
+        // EditorGUI.PropertyField(nameRect, property.FindPropertyRelative("name"), GUIContent.none);
+
+        // Set indent back to what it was
+        EditorGUI.indentLevel = indent;
+
+        EditorGUI.EndProperty();
+    }
+}
 
 public class SpaceShip : MonoBehaviour {
 
 	public string shipClass;
+	public List<ShipModStatus> mods; 
+	public void addModule(ShipModule mod){
+		mods = mods ?? new List<ShipModStatus>();
+		ShipModStatus modstat = new ShipModStatus(mod);
+		mods.Add(modstat);
+	}
 
 	[Multiline(8)]
 	public string shipLog;
@@ -83,7 +140,7 @@ public class SpaceShip : MonoBehaviour {
 	
 	private GameObject _navGyro; //turn this to move the ship
 	private GameObject _shipFrame;	//this contains all of the ship components
-
+	public GameObject shipFrame;
 	private Rigidbody _rb;
 	
 	[Header("Effects")]
@@ -91,7 +148,6 @@ public class SpaceShip : MonoBehaviour {
 	public GameObject lowHPEffect;
 	public GameObject deathEffect;
 	public GameObject disabledEffect;
-	
 	
 	[Header("Physics")]
 	private Vector3 _lastVelocity;
@@ -114,10 +170,24 @@ public class SpaceShip : MonoBehaviour {
 	public GameObject navFloatingWaypoint;
 
 	public GameObject DockingPort;
-	public List<ShipModule> all_modules = new List<ShipModule>();
+	private List<ShipModule> all_modules = new List<ShipModule>();
+
+	private void checkModules(){
+		if (mods.Count != all_modules.Count){
+			mods = new List<ShipModStatus>();
+			foreach ( ShipModule mod in all_modules)
+				mods.Add(new ShipModStatus(mod));
+		}
+		foreach ( ShipModStatus mod in mods)
+		{
+			mod.updateStatus();
+		}
+	}
 
 	private void Update()
 	{
+		checkModules();
+
 		if (condition == ShipCondition.error)
 			return;
 			
@@ -139,11 +209,30 @@ public class SpaceShip : MonoBehaviour {
 		{
 
 			// DRAG CONTROL
+			Rb.drag = normalDrag;
+
+
 			float velocityIntent = throttle * maxSafeVelocity;
 			if (Rb.velocity.magnitude < velocityIntent)
 				Rb.AddRelativeForce(Vector3.forward * (EnginePower * throttle * mass));	
 			
 			velocityReport = Rb.velocity.magnitude;
+
+			//point ship toward gyro
+			
+
+			//gimbal causes the ship to keep up with Gyro
+			GimbalAction();
+			// transform.Rotate(PitchIntensity, YawIntensity, 0f, Space.World);
+			
+			Vector3 te = transform.rotation.eulerAngles;
+			Vector3 ge = Gyro.transform.rotation.eulerAngles;
+
+			float xr = Mathf.LerpAngle(te.x, ge.x,Time.deltaTime);
+			float yr = Mathf.LerpAngle(te.y, ge.y,Time.deltaTime);
+
+			transform.rotation = Quaternion.Euler(xr,yr,0f);
+			
 		}
 	}
 	
@@ -345,17 +434,25 @@ public class SpaceShip : MonoBehaviour {
 		}
 	}
 
+	public void yoke(float pitch, float yaw, float roll){
+		Gyro.transform.localRotation = Quaternion.Euler(pitch, yaw, roll);
+
+		// Gyro.transform.Rotate(pitch,yaw,roll);
+		
+
+	}
+
 	//Ship Nav Info
 
 	public float PitchIntensity
 	{
 		get{
-			float PitchIntensity = Gyro.transform.localRotation.eulerAngles.x - transform.localRotation.eulerAngles.x;
-			if (PitchIntensity > 180) 
+			float XRotForce = Gyro.transform.localRotation.eulerAngles.x - transform.localRotation.eulerAngles.x;
+			if (XRotForce > 180) 
 			{
-				PitchIntensity -= 360; 
+				XRotForce -= 360; 
 			}
-			return PitchIntensity;
+			return XRotForce;
 		}
 	}
 	public float YawIntensity
@@ -378,9 +475,14 @@ public class SpaceShip : MonoBehaviour {
 		get	{
 			if (_shipFrame == null)
 			{
-				_shipFrame = new GameObject("Ship Frame (Gimbal)");
-				_shipFrame.transform.position = transform.position;
-				_shipFrame.transform.SetParent(transform);
+				if (shipFrame){
+					_shipFrame = shipFrame;
+				}
+				else{
+					_shipFrame = new GameObject("Ship Frame (Gimbal)");
+					_shipFrame.transform.position = transform.position;
+					_shipFrame.transform.SetParent(transform);
+				}
 			}
 
 			return _shipFrame;
@@ -389,9 +491,6 @@ public class SpaceShip : MonoBehaviour {
 
 	public void GimbalAction()
 	{
-		
-
-
 		//For PLAYER USE?
 		/*
 		if (GetComponentInParent<SpaceShip>().pilot == SpaceShip.shipController.player)
@@ -410,11 +509,15 @@ public class SpaceShip : MonoBehaviour {
 		
 		//angle between gyro and parent
 
-		_banker = Mathf.LerpAngle(transform.localRotation.eulerAngles.z, YawIntensity * bankGimbalForce, gimbalResetTime * Time.deltaTime);
+		float bankEffect = 0f;
+		bankEffect = Mathf.LerpAngle(transform.localRotation.eulerAngles.z, YawIntensity * bankGimbalForce, gimbalResetTime * Time.deltaTime);
 
-		_pitcher = Mathf.LerpAngle(transform.localRotation.eulerAngles.x, PitchIntensity * pitchForce, gimbalResetTime * Time.deltaTime);
+		//_pitcher = Mathf.LerpAngle(transform.localRotation.eulerAngles.x, PitchIntensity * pitchForce, gimbalResetTime * Time.deltaTime);
+		
+		bankEffect = Mathf.Clamp(bankEffect, -90f, 90f);
 
-		transform.localRotation = Quaternion.Euler(_pitcher, 0.0f, _banker);
+		//apply to shipframe
+		ShipFrame.transform.localRotation = Quaternion.Euler(0f, 0f, bankEffect);
 
 	}
 
